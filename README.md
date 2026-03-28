@@ -1,2 +1,4 @@
-# gitdocs
-A git addon to alleviate documentation rot by allowing you to bind code and docs segments together.
+# gitlink
+
+A git addon to alleviate documentation rot, constant-linkage, and
+soft-dependencies by allowing you to bind code segments together.

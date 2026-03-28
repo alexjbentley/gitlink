@@ -1,0 +1,7 @@
+- id: git-link-check
+  name: Check git-link segments
+  description: Exits non-zero if staged changes cause linked segments to diverge.
+  entry: git-link check
+  language: python
+  pass_filenames: false
+  stages: [pre-commit]
