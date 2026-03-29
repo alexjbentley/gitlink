@@ -30,6 +30,10 @@ Useful for linking together constant values in a polyglot environment.
 // git-link: <link_name>
 ...
 // git-link-end: <link_name>
+
+/* git-link: <link_name> */
+...
+/* git-link-end: <link_name> */
 ```
 
 Where:

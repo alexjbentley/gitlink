@@ -1,6 +1,8 @@
 import re
 from pathlib import Path
 
+from gitlink.parse import SUPPORTED_EXTENSIONS
+
 _DIFF_FILE_RE = re.compile(r"^\+\+\+ b/(.+)$")
 _HUNK_RE = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@")
 
@@ -9,7 +11,7 @@ def changed_lines(diff_output: str) -> dict[Path, set[int]]:
     """Parse `git diff --cached` output.
 
     Returns a map of file path → set of changed line numbers (new-file side,
-    1-indexed). Only .py files are included.
+    1-indexed). Only files with supported extensions are included.
     """
     result: dict[Path, set[int]] = {}
     current_file: Path | None = None
@@ -19,7 +21,7 @@ def changed_lines(diff_output: str) -> dict[Path, set[int]]:
         file_match = _DIFF_FILE_RE.match(line)
         if file_match:
             path = Path(file_match.group(1))
-            current_file = path if path.suffix == ".py" else None
+            current_file = path if path.suffix in SUPPORTED_EXTENSIONS else None
             current_line = 0
             continue
 

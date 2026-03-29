@@ -3,8 +3,34 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-_OPEN_RE = re.compile(r"#\s*git-link:\s+(\S+)")
-_CLOSE_RE = re.compile(r"#\s*git-link-end:\s+(\S+)")
+
+@dataclass(frozen=True)
+class Language:
+    extensions: tuple[str, ...]
+    open_re: re.Pattern
+    close_re: re.Pattern
+
+
+LANGUAGES: list[Language] = [
+    Language(
+        extensions=(".py",),
+        open_re=re.compile(r"#\s*git-link:\s+(\S+)"),
+        close_re=re.compile(r"#\s*git-link-end:\s+(\S+)"),
+    ),
+    Language(
+        extensions=(".c", ".h"),
+        open_re=re.compile(r"(?://|/\*)\s*git-link:\s+(\S+)"),
+        close_re=re.compile(r"(?://|/\*)\s*git-link-end:\s+(\S+)"),
+    ),
+]
+
+SUPPORTED_EXTENSIONS: frozenset[str] = frozenset(
+    ext for lang in LANGUAGES for ext in lang.extensions
+)
+
+_EXT_TO_LANGUAGE: dict[str, Language] = {
+    ext: lang for lang in LANGUAGES for ext in lang.extensions
+}
 
 
 @dataclass(frozen=True)
@@ -20,6 +46,10 @@ class LinkBlock:
 
 
 def find_blocks(path: Path) -> list[LinkBlock]:
+    lang = _EXT_TO_LANGUAGE.get(path.suffix)
+    if lang is None:
+        return []
+
     lines = path.read_text().splitlines()
     blocks = []
     open_markers: dict[str, int] = {}  # name → 1-indexed line number
@@ -27,7 +57,7 @@ def find_blocks(path: Path) -> list[LinkBlock]:
     for i, line in enumerate(lines):
         lineno = i + 1
 
-        close_match = _CLOSE_RE.search(line)
+        close_match = lang.close_re.search(line)
         if close_match:
             name = close_match.group(1)
             if name not in open_markers:
@@ -41,7 +71,7 @@ def find_blocks(path: Path) -> list[LinkBlock]:
                 ))
             continue
 
-        open_match = _OPEN_RE.search(line)
+        open_match = lang.open_re.search(line)
         if open_match:
             name = open_match.group(1)
             if name in open_markers:
@@ -56,6 +86,7 @@ def find_blocks(path: Path) -> list[LinkBlock]:
 
 def find_all_blocks(root: Path) -> list[LinkBlock]:
     blocks = []
-    for path in sorted(root.rglob("*.py")):
-        blocks.extend(find_blocks(path))
+    for ext in sorted(SUPPORTED_EXTENSIONS):
+        for path in sorted(root.rglob(f"*{ext}")):
+            blocks.extend(find_blocks(path))
     return blocks

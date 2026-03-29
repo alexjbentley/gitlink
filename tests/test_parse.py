@@ -57,3 +57,39 @@ def test_multiple_named_blocks_in_one_file(tmp_path):
     )
     blocks = find_blocks(tmp_path / "multi.py")
     assert [b.name for b in blocks] == ["a", "b"]
+
+
+def test_finds_all_blocks_in_c_example_file():
+    blocks = find_blocks(EXAMPLES / "baz.c")
+    assert [b.name for b in blocks] == ["consts", "block_comment_consts", "mixed_style"]
+
+
+def test_c_block_comment_style(tmp_path):
+    (tmp_path / "f.c").write_text(
+        "/* git-link: x */\nint val = 1;\n/* git-link-end: x */\n"
+    )
+    blocks = find_blocks(tmp_path / "f.c")
+    assert len(blocks) == 1
+    assert blocks[0].name == "x"
+
+
+def test_c_mixed_comment_styles_are_accepted(tmp_path):
+    (tmp_path / "f.c").write_text(
+        "// git-link: x\nint val = 1;\n/* git-link-end: x */\n"
+    )
+    blocks = find_blocks(tmp_path / "f.c")
+    assert len(blocks) == 1
+    assert blocks[0].name == "x"
+
+
+def test_find_all_blocks_includes_c_and_py(tmp_path):
+    (tmp_path / "a.py").write_text("# git-link: x\nval = 1\n# git-link-end: x\n")
+    (tmp_path / "b.c").write_text("// git-link: x\nint val = 1;\n// git-link-end: x\n")
+    blocks = find_all_blocks(tmp_path)
+    assert len(blocks) == 2
+    assert {b.file.suffix for b in blocks} == {".py", ".c"}
+
+
+def test_unsupported_extension_returns_empty(tmp_path):
+    (tmp_path / "f.rs").write_text("// git-link: x\nlet val = 1;\n// git-link-end: x\n")
+    assert find_blocks(tmp_path / "f.rs") == []
