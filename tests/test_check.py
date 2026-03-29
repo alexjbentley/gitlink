@@ -44,6 +44,29 @@ def test_no_failures_when_no_link_blocks_touched(tmp_path):
     assert find_failures(changed, all_blocks, tmp_path) == []
 
 
+def test_accepted_name_does_not_cause_failure(tmp_path):
+    make_file(tmp_path, "a.py", "# git-link: x\nval = 1\n# git-link-end: x\n")
+    make_file(tmp_path, "b.py", "# git-link: x\nval = 1\n# git-link-end: x\n")
+    all_blocks = find_all_blocks(tmp_path)
+    changed = {Path("a.py"): {2}}
+    assert find_failures(changed, all_blocks, tmp_path, accepted={"x"}) == []
+
+
+def test_non_accepted_name_still_fails_alongside_accepted(tmp_path):
+    make_file(tmp_path, "a.py",
+        "# git-link: x\nval = 1\n# git-link-end: x\n"
+        "# git-link: y\nval = 2\n# git-link-end: y\n"
+    )
+    make_file(tmp_path, "b.py", "# git-link: x\nval = 1\n# git-link-end: x\n")
+    make_file(tmp_path, "c.py", "# git-link: y\nval = 2\n# git-link-end: y\n")
+    all_blocks = find_all_blocks(tmp_path)
+    # x is accepted, y is not — touch both in a.py but neither b.py nor c.py
+    changed = {Path("a.py"): {2, 5}}
+    failures = find_failures(changed, all_blocks, tmp_path, accepted={"x"})
+    assert len(failures) == 1
+    assert "y" in failures[0]
+
+
 def test_independent_link_names_do_not_interfere(tmp_path):
     make_file(tmp_path, "a.py",
         "# git-link: x\nval = 1\n# git-link-end: x\n"

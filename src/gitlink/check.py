@@ -3,23 +3,19 @@ import sys
 from pathlib import Path
 
 from gitlink import diff, parse
-
-
-def _repo_root() -> Path:
-    result = subprocess.run(
-        ["git", "rev-parse", "--show-toplevel"],
-        capture_output=True, text=True, check=True,
-    )
-    return Path(result.stdout.strip())
+from gitlink._git import repo_root
+from gitlink.accept import read_accepts
 
 
 def find_failures(
     changed: dict[Path, set[int]],
     all_blocks: list[parse.LinkBlock],
     root: Path,
+    accepted: set[str] | frozenset[str] = frozenset(),
 ) -> list[str]:
     """Return a failure message for each link name where not all blocks were touched.
 
+    Names present in `accepted` are skipped.
     `changed` maps repo-relative file paths to sets of changed line numbers.
     `all_blocks` is every LinkBlock found in the repo.
     `root` is the repo root, used to format relative paths in messages.
@@ -33,10 +29,11 @@ def find_failures(
                 touched_names.add(block.name)
 
     failures = []
-    for name in sorted(touched_names):
+    for name in sorted(touched_names - accepted):
         group = [b for b in all_blocks if b.name == name]
         untouched = [
-            b for b in group
+            b
+            for b in group
             if b.file not in changed_abs
             or not (changed_abs[b.file] & set(b.line_range()))
         ]
@@ -52,19 +49,34 @@ def find_failures(
 def run() -> None:
     diff_output = subprocess.run(
         ["git", "diff", "--cached"],
-        capture_output=True, text=True, check=True,
+        capture_output=True,
+        text=True,
+        check=True,
     ).stdout
 
     changed = diff.changed_lines(diff_output)
     if not changed:
         sys.exit(0)
 
-    root = _repo_root()
+    root = repo_root()
     all_blocks = parse.find_all_blocks(root)
-    failures = find_failures(changed, all_blocks, root)
+    accepts = read_accepts(root)
+
+    if accepts:
+        print(
+            "git-link: warning: the following acceptances are still active:",
+            file=sys.stderr,
+        )
+        for name, reason in sorted(accepts.items()):
+            print(f"  [{name}] {reason}", file=sys.stderr)
+
+    failures = find_failures(changed, all_blocks, root, accepted=set(accepts))
 
     if failures:
-        print("git-link: staged changes touch linked blocks that were not mutually updated:", file=sys.stderr)
+        print(
+            "git-link: staged changes touch linked blocks that were not mutually updated:",
+            file=sys.stderr,
+        )
         for f in failures:
             print(f, file=sys.stderr)
         sys.exit(1)
