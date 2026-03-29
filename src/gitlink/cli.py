@@ -1,6 +1,6 @@
 import sys
 
-from gitlink import accept, check
+from gitlink import accept, add, check
 
 
 def main() -> None:
@@ -10,10 +10,13 @@ def main() -> None:
 
     subcommand = sys.argv[1]
 
-    if subcommand == "check":
-        check.run()
-    elif subcommand == "accept":
-        accept.run()
-    else:
-        print(f"unknown subcommand: {subcommand}", file=sys.stderr)
-        sys.exit(1)
+    match subcommand:
+        case "accept":
+            accept.run()
+        case "add":
+            add.run()
+        case "check":
+            check.run()
+        case _:
+            print(f"unknown subcommand: {subcommand}", file=sys.stderr)
+            sys.exit(1)
