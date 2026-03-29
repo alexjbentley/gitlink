@@ -90,6 +90,36 @@ def test_find_all_blocks_includes_c_and_py(tmp_path):
     assert {b.file.suffix for b in blocks} == {".py", ".c"}
 
 
+def test_all_c_style_languages_recognised(tmp_path):
+    c_style = "// git-link: x\nval;\n// git-link-end: x\n"
+    extensions = [
+        ".cpp", ".cc", ".cxx", ".hpp", ".hh",
+        ".js", ".jsx", ".mjs", ".cjs",
+        ".ts", ".tsx",
+        ".java", ".cs", ".php", ".go", ".rs", ".kt", ".kts", ".dart",
+    ]
+    for ext in extensions:
+        (tmp_path / f"f{ext}").write_text(c_style)
+    blocks = find_all_blocks(tmp_path)
+    assert {b.file.suffix for b in blocks} == set(extensions)
+
+
+def test_all_hash_style_languages_recognised(tmp_path):
+    hash_style = "# git-link: x\nval\n# git-link-end: x\n"
+    extensions = [".rb", ".sh", ".bash", ".hcl", ".tf"]
+    for ext in extensions:
+        (tmp_path / f"f{ext}").write_text(hash_style)
+    blocks = find_all_blocks(tmp_path)
+    assert {b.file.suffix for b in blocks} == set(extensions)
+
+
+def test_lua_style_recognised(tmp_path):
+    (tmp_path / "f.lua").write_text("-- git-link: x\nval = 1\n-- git-link-end: x\n")
+    blocks = find_blocks(tmp_path / "f.lua")
+    assert len(blocks) == 1
+    assert blocks[0].name == "x"
+
+
 def test_unsupported_extension_returns_empty(tmp_path):
-    (tmp_path / "f.rs").write_text("// git-link: x\nlet val = 1;\n// git-link-end: x\n")
-    assert find_blocks(tmp_path / "f.rs") == []
+    (tmp_path / "f.swift").write_text("// git-link: x\nval\n// git-link-end: x\n")
+    assert find_blocks(tmp_path / "f.swift") == []
