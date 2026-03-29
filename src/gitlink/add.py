@@ -5,15 +5,15 @@ from pathlib import Path
 def run() -> None:
     args = sys.argv[2:]  # strip "git-link add"
     if len(args) != 4:
-        print("usage: git-link add <file> <line> <num_lines> <name>", file=sys.stderr)
+        print("usage: git-link add <file> <start_line> <end_line> <name>", file=sys.stderr)
         sys.exit(2)
 
     file_path = Path(args[0])
     try:
-        line = int(args[1])
-        num_lines = int(args[2])
+        start_line = int(args[1])
+        end_line = int(args[2])
     except ValueError:
-        print("error: <line> and <num_lines> must be integers", file=sys.stderr)
+        print("error: <start_line> and <end_line> must be integers", file=sys.stderr)
         sys.exit(2)
     name = args[3]
 
@@ -22,13 +22,25 @@ def run() -> None:
         sys.exit(2)
 
     lines = file_path.read_text().splitlines(keepends=True)
+    num_lines = len(lines)
 
-    if line < 1 or line > len(lines) + 1:
-        print(f"error: line {line} is out of range for {file_path}", file=sys.stderr)
+    if start_line < 1 or start_line > num_lines:
+        print(f"error: start_line {start_line} is out of range for {file_path}", file=sys.stderr)
+        sys.exit(2)
+    if end_line < start_line or end_line > num_lines:
+        print(f"error: end_line {end_line} is out of range for {file_path}", file=sys.stderr)
         sys.exit(2)
 
-    target_line = lines[line - 1] if line <= len(lines) else ""
-    indent = len(target_line) - len(target_line.lstrip())
-    marker = f"{target_line[:indent]}# git-link: {num_lines} {name}\n"
-    lines.insert(line - 1, marker)
+    indent = _indent_of(lines[start_line - 1])
+    open_marker = f"{indent}# git-link: {name}\n"
+    close_marker = f"{indent}# git-link-end: {name}\n"
+
+    # Insert closing marker first so start_line index is still valid.
+    lines.insert(end_line, close_marker)
+    lines.insert(start_line - 1, open_marker)
+
     file_path.write_text("".join(lines))
+
+
+def _indent_of(line: str) -> str:
+    return line[: len(line) - len(line.lstrip())]
