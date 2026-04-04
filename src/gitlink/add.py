@@ -1,6 +1,8 @@
 import sys
 from pathlib import Path
 
+from gitlink.languages import language_for_ext
+
 
 def run() -> None:
     args = sys.argv[2:]  # strip "git-link add"
@@ -21,6 +23,11 @@ def run() -> None:
         print(f"error: {file_path} does not exist", file=sys.stderr)
         sys.exit(2)
 
+    lang = language_for_ext(file_path.suffix)
+    if lang is None:
+        print(f"error: {file_path.suffix} is not a supported file type", file=sys.stderr)
+        sys.exit(2)
+
     lines = file_path.read_text().splitlines(keepends=True)
     num_lines = len(lines)
 
@@ -32,8 +39,8 @@ def run() -> None:
         sys.exit(2)
 
     indent = _indent_of(lines[start_line - 1])
-    open_marker = f"{indent}# git-link: {name}\n"
-    close_marker = f"{indent}# git-link-end: {name}\n"
+    open_marker  = f"{indent}{lang.open_marker_format.format(name=name)}\n"
+    close_marker = f"{indent}{lang.close_marker_format.format(name=name)}\n"
 
     # Insert closing marker first so start_line index is still valid.
     lines.insert(end_line, close_marker)

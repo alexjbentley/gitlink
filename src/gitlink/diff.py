@@ -1,7 +1,7 @@
 import re
 from pathlib import Path
 
-from gitlink.parse import SUPPORTED_EXTENSIONS
+from gitlink.languages import SUPPORTED_EXTENSIONS
 
 _DIFF_FILE_RE = re.compile(r"^\+\+\+ b/(.+)$")
 _HUNK_RE = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@")

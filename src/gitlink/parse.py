@@ -1,52 +1,8 @@
-import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-
-@dataclass(frozen=True)
-class Language:
-    extensions: tuple[str, ...]
-    open_re: re.Pattern
-    close_re: re.Pattern
-
-
-_C_STYLE_OPEN    = re.compile(r"(?://|/\*)\s*git-link:\s+(\S+)")
-_C_STYLE_CLOSE   = re.compile(r"(?://|/\*)\s*git-link-end:\s+(\S+)")
-_HASH_STYLE_OPEN  = re.compile(r"#\s*git-link:\s+(\S+)")
-_HASH_STYLE_CLOSE = re.compile(r"#\s*git-link-end:\s+(\S+)")
-_LUA_STYLE_OPEN  = re.compile(r"--\s*git-link:\s+(\S+)")
-_LUA_STYLE_CLOSE = re.compile(r"--\s*git-link-end:\s+(\S+)")
-
-LANGUAGES: list[Language] = [
-    # Hash-style comments
-    Language(extensions=(".py",),                                open_re=_HASH_STYLE_OPEN, close_re=_HASH_STYLE_CLOSE),
-    Language(extensions=(".rb",),                                open_re=_HASH_STYLE_OPEN, close_re=_HASH_STYLE_CLOSE),
-    Language(extensions=(".sh", ".bash"),                        open_re=_HASH_STYLE_OPEN, close_re=_HASH_STYLE_CLOSE),
-    Language(extensions=(".hcl", ".tf"),                         open_re=_HASH_STYLE_OPEN, close_re=_HASH_STYLE_CLOSE),
-    # C-style comments (//, /* */)
-    Language(extensions=(".c", ".h"),                            open_re=_C_STYLE_OPEN, close_re=_C_STYLE_CLOSE),
-    Language(extensions=(".cpp", ".cc", ".cxx", ".hpp", ".hh"),  open_re=_C_STYLE_OPEN, close_re=_C_STYLE_CLOSE),
-    Language(extensions=(".js", ".jsx", ".mjs", ".cjs"),         open_re=_C_STYLE_OPEN, close_re=_C_STYLE_CLOSE),
-    Language(extensions=(".ts", ".tsx"),                         open_re=_C_STYLE_OPEN, close_re=_C_STYLE_CLOSE),
-    Language(extensions=(".java",),                              open_re=_C_STYLE_OPEN, close_re=_C_STYLE_CLOSE),
-    Language(extensions=(".cs",),                                open_re=_C_STYLE_OPEN, close_re=_C_STYLE_CLOSE),
-    Language(extensions=(".php",),                               open_re=_C_STYLE_OPEN, close_re=_C_STYLE_CLOSE),
-    Language(extensions=(".go",),                                open_re=_C_STYLE_OPEN, close_re=_C_STYLE_CLOSE),
-    Language(extensions=(".rs",),                                open_re=_C_STYLE_OPEN, close_re=_C_STYLE_CLOSE),
-    Language(extensions=(".kt", ".kts"),                         open_re=_C_STYLE_OPEN, close_re=_C_STYLE_CLOSE),
-    Language(extensions=(".dart",),                              open_re=_C_STYLE_OPEN, close_re=_C_STYLE_CLOSE),
-    # Lua-style comments (--)
-    Language(extensions=(".lua",),                               open_re=_LUA_STYLE_OPEN, close_re=_LUA_STYLE_CLOSE),
-]
-
-SUPPORTED_EXTENSIONS: frozenset[str] = frozenset(
-    ext for lang in LANGUAGES for ext in lang.extensions
-)
-
-_EXT_TO_LANGUAGE: dict[str, Language] = {
-    ext: lang for lang in LANGUAGES for ext in lang.extensions
-}
+from gitlink.languages import SUPPORTED_EXTENSIONS, language_for_ext
 
 
 @dataclass(frozen=True)
@@ -62,7 +18,7 @@ class LinkBlock:
 
 
 def find_blocks(path: Path) -> list[LinkBlock]:
-    lang = _EXT_TO_LANGUAGE.get(path.suffix)
+    lang = language_for_ext(path.suffix)
     if lang is None:
         return []
 
